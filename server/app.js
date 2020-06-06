@@ -17,17 +17,17 @@ app.use(express.static(path.join(__dirname, '../public')));
 
 
 
-app.get('/', 
+app.get('/',
 (req, res) => {
   res.render('index');
 });
 
-app.get('/create', 
+app.get('/create',
 (req, res) => {
   res.render('index');
 });
 
-app.get('/links', 
+app.get('/links',
 (req, res, next) => {
   models.Links.getAll()
     .then(links => {
@@ -38,7 +38,7 @@ app.get('/links',
     });
 });
 
-app.post('/links', 
+app.post('/links',
 (req, res, next) => {
   var url = req.body.url;
   if (!models.Links.isValidUrl(url)) {
@@ -79,6 +79,69 @@ app.post('/links',
 /************************************************************/
 
 
+// signup
+app.post('/signup', (req, res, next) => {
+
+  let username = req.body.username;
+  let password = req.body.password;
+
+  models.Users.create({username, password})
+   .then(() => {
+    res.redirect('/');
+  })
+  .error(error => {
+    res.redirect('/signup');
+  })
+});
+
+
+// login
+app.post('/login', (req, res, next) => {
+
+  let user = req.body.username;
+  let attempted = req.body.password       // attempted password
+  console.log("User :", user)
+  return models.Users.get({username: user})
+    //'Users that do not exist are kept on login page'
+    // .catch(error => {
+    //   console.log('err')
+    //   res.redirect('/login')
+    // })
+
+    .then(data => {
+      let password = data.password  // password
+      let theSalt = data.salt       // Salt
+      console.log("the object!!!!!", data)  // Worked!
+      if(!data || !models.Users.compare({attempted, password, theSalt})) {
+        throw new Error("Did not work")
+      }
+
+
+      console.log("attempted :", attempted)
+      console.log("Password :", password)
+      console.log("salt :", theSalt)
+      console.log(models.Users.compare({attempted, password, theSalt}))
+      // if (models.Users.compare({attempted, password, theSalt})) {
+      //   //'Users that enter an incorrect password are kept on login page'
+      //   res.redirect('/');
+      // } else {
+      //   res.redirect('/login')
+      //   done()
+      // }
+
+    })
+    return models.Sessions.update({hash: req.session.hash}, {userId: user.id})
+    .then(() => {
+      res.redirect('/')
+    })
+    .error(error => {
+      res.status(500).send(error)
+    })
+    .catch(() => {
+      res.redirect('/login')
+    })
+
+});
 
 /************************************************************/
 // Handle the code parameter route last - if all other routes fail
